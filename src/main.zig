@@ -1,26 +1,43 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const math = std.math;
+
+const vector = struct {
+    x: f32,
+    y: f32,
+
+    fn deinit(self: vector, allocator: Allocator) void {
+        allocator.free(self.name);
+    }
+};
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    var vec1 = vector{ .x = 0, .y = 0 };
+    var vec2 = vector{ .x = 0, .y = 0 };
 
-    const coolint: i1 = -1;
-    std.debug.print("Youds are this stupid: {}\n", .{coolint});
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    // Get allocator
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // Parse args into string array (error union needs 'try')
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
-    try bw.flush(); // don't forget to flush!
-}
+    // Get and print them!
+    std.debug.print("There are {d} args:\n", .{args.len});
+    defer vec1.deinit(allocator);
+    defer vec2.deinit(allocator);
+    vec1.x = @as(i32, args[1]);
+    vec1.y = @as(i32, args[2]);
+    vec2.x = @as(i32, args[3]);
+    vec2.y = @as(i32, args[4]);
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    const mag1 = (vec1.x * vec1.x) + (vec1.y * vec1.y);
+    const mag2 = (vec2.x * vec2.x) + (vec2.y * vec2.y);
+    const dot1 = vec1.x * vec2.x + vec1.y * vec2.y;
+
+    const degrees: f32 = math.radiansToDegrees(math.acos((mag1 * mag2) / dot1));
+
+    std.debug.print("The angle is {}", .{degrees});
 }
